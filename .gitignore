@@ -9,10 +9,7 @@ jspm_packages/
 .env.test.local
 .env.production.local
 
-# Databases
-*.db
-*.sqlite
-*.sqlite3
+
 
 # Log files
 npm-debug.log*
