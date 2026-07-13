@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submission Detail – Edmissions World</title>
+  <meta name="description" content="View and edit details of a student form submission using React.">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  
+  <!-- React, ReactDOM, and Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    .react-input {
+      width: 100%;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      border: 1.5px solid #dbe1eb;
+      border-radius: 6px;
+      outline: none;
+      transition: all 0.2s ease;
+      background: #fafafa;
+    }
+    .react-input:focus {
+      border-color: #162238;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(22, 34, 56, 0.08);
+    }
+    .react-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid #dbe1eb;
+      border-radius: 6px;
+      background: #ffffff;
+      outline: none;
+    }
+    .react-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: #c0392b;
+      cursor: pointer;
+    }
+    .edit-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      justify-content: flex-end;
+    }
+    .qual-edit-table input {
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      text-align: center;
+      border: 1px solid #dbe1eb;
+      border-radius: 4px;
+      width: 100%;
+    }
+    .qual-edit-table input:focus {
+      border-color: #c0392b;
+      outline: none;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+        background-image: none !important;
+        color: #000000 !important;
+      }
+      .admin-header {
+        background: #ffffff !important;
+        box-shadow: none !important;
+        border-bottom: 1.5px solid #dbe1eb !important;
+        padding: 20px 0 !important;
+      }
+      .admin-header-inner {
+        justify-content: center !important;
+        width: 100% !important;
+      }
+      .admin-header-brand {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0 !important;
+      }
+      .admin-header-brand div:last-child {
+        display: none !important;
+      }
+      .admin-header-brand div:first-child {
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+      }
+      .admin-header-brand img {
+        height: 140px !important;
+        width: auto !important;
+      }
+      .detail-main {
+        margin: 20px 0 !important;
+        padding: 0 !important;
+      }
+      .detail-header {
+        margin-bottom: 20px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="react-root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function AdminDetailApp() {
+      const [submission, setSubmission] = useState(null);
+      const [isEditing, setIsEditing] = useState(false);
+      const [formData, setFormData] = useState({});
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [alert, setAlert] = useState(null);
+
+      const submissionId = new URLSearchParams(window.location.search).get('id');
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const authRes = await fetch('/api/auth/status');
+            const authData = await authRes.json();
+            if (!authData.loggedIn) {
+              window.location.href = '/admin-login.html';
+              return;
+            }
+
+            if (!submissionId) {
+              setError('No submission ID provided.');
+              setLoading(false);
+              return;
+            }
+
+            loadSubmission();
+          } catch (err) {
+            window.location.href = '/admin-login.html';
+          }
+        })();
+      }, []);
+
+      const loadSubmission = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/admin/submissions/${submissionId}`);
+          if (res.status === 401) {
+            window.location.href = '/admin-login.html';
+            return;
+          }
+          if (res.status === 404) {
+            setError('Submission not found.');
+            setLoading(false);
+            return;
+          }
+          const data = await res.json();
+          if (data.success) {
+            setSubmission(data.data);
+            setFormData(data.data);
+          } else {
+            setError(data.message);
+          }
+        } catch (err) {
+          setError('Failed to fetch submission details.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+          ...prev,
+          [name]: type === 'checkbox' ? checked : value
+        }));
+      };
+
+      const handleQualChange = (index, field, value) => {
+        const updatedQuals = [...(formData.qualifications || [])];
+        if (!updatedQuals[index]) updatedQuals[index] = {};
+        updatedQuals[index][field] = value;
+        setFormData(prev => ({
+          ...prev,
+          qualifications: updatedQuals
+        }));
+      };
+
+      const handleSave = async (e) => {
+        e.preventDefault();
+        setAlert({ type: 'info', message: 'Saving changes...' });
+        try {
+          const res = await fetch(`/api/admin/submissions/${submissionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          const data = await res.json();
+          if (data.success) {
+            setSubmission(data.data);
+            setIsEditing(false);
+            setAlert({ type: 'success', message: 'Changes saved successfully.' });
+            setTimeout(() => setAlert(null), 3000);
+          } else {
+            setAlert({ type: 'error', message: data.message || 'Failed to save changes.' });
+          }
+        } catch (err) {
+          setAlert({ type: 'error', message: 'Network error. Please try again.' });
+        }
+      };
+
+      const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this submission? This action cannot be undone.')) return;
+        try {
+          const res = await fetch(`/api/admin/submissions/${submissionId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            alert('Submission deleted successfully.');
+            window.location.href = '/admin-records.html';
+          } else {
+            alert(data.message || 'Delete failed.');
+          }
+        } catch {
+          alert('Network error. Please try again.');
+        }
+      };
+
+      const logout = async () => {
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+        window.location.href = '/admin-login.html';
+      };
+
+      const val = (v) => v === null || v === undefined || v === '' ? <span className="empty">—</span> : String(v);
+      const boolBadge = (v) => v ? <span className="badge badge-green">Yes</span> : <span className="badge badge-gray">No</span>;
+      
+      const formatDateTime = (d) => {
+        if (!d) return <span className="empty">—</span>;
+        return new Date(d).toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+      };
+
+      if (loading) {
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', flexDirection: 'column' }}>
+            <div className="spinner" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#c0392b', marginBottom: '16px' }}></div>
+            <p style={{ color: '#7a736d', fontWeight: 500 }}>Loading student details...</p>
+          </div>
+        );
+      }
+
+      if (error) {
+        return (
+          <div className="detail-main" style={{ marginTop: '48px' }}>
+            <div className="alert alert-error">❌ {error}</div>
+            <a href="/admin-records.html" className="btn btn-primary" style={{ marginTop: '16px' }}>← Back to Records</a>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          {/* ── Admin Header ── */}
+          <header className="admin-header">
+            <div className="admin-header-inner">
+              <div className="admin-header-brand" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
+                <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 16px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  <img src="/images/logo.png" alt="Edmissions World" style={{ height: '55px', width: 'auto', display: 'block' }} />
+                </div>
+                <div>
+                  <h1>Edmissions World</h1>
+                  <p>Study Abroad Management System</p>
+                </div>
+              </div>
+              <div className="admin-header-nav no-print">
+                <a href="/admin-records.html" className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }}>
+                  ← Back to Records
+                </a>
+                <button className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }} onClick={logout}>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* ── Main Detail Area ── */}
+          <main className="detail-main">
+            <div className="detail-header">
+              <div>
+                <h2 style={{ fontSize: '1.5rem' }}>{submission.first_name} {submission.last_name}</h2>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', marginTop: '4px' }}>
+                  Submission #{submission.id} · {formatDateTime(submission.created_at)}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }} className="no-print">
+                {!isEditing ? (
+                  <>
+                    <button className="btn btn-success btn-sm" onClick={() => setIsEditing(true)}>✏️ Edit Submission</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>🖨️ Print</button>
+                    <button className="btn btn-primary btn-sm" onClick={handleDelete}>🗑️ Delete</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setIsEditing(false); setFormData(submission); }}>Cancel</button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {alert && (
+              <div className={`alert alert-${alert.type}`}>
+                {alert.type === 'error' ? '❌' : alert.type === 'success' ? '✅' : 'ℹ️'} {alert.message}
+              </div>
+            )}
+
+            {!isEditing ? (
+              <div className="view-mode-container">
+                <div className="detail-section">
+                  <div className="detail-section-header">🎓 Student Information</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field"><label>First Name</label><span>{val(submission.first_name)}</span></div>
+                      <div className="detail-field"><label>Last Name</label><span>{val(submission.last_name)}</span></div>
+                      <div className="detail-field"><label>Gender</label><span>{val(submission.gender)}</span></div>
+                      <div className="detail-field"><label>Date of Birth</label><span>{val(submission.dob)}</span></div>
+                      <div className="detail-field"><label>Email</label><span>{val(submission.email)}</span></div>
+                      <div className="detail-field"><label>Mobile</label><span>{val(submission.mobile)}</span></div>
+                      <div className="detail-field"><label>Has Passport</label>{boolBadge(submission.has_passport)}</div>
+                      <div className="detail-field"><label>Passport Number</label><span>{val(submission.passport_number)}</span></div>
+                      <div className="detail-field"><label>Form Date</label><span>{val(submission.date)}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">👨‍👩‍👦 Parents Information</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field"><label>Father Name</label><span>{val(submission.father_name)}</span></div>
+                      <div className="detail-field"><label>Mother Name</label><span>{val(submission.mother_name)}</span></div>
+                      <div className="detail-field"><label>Father Occupation</label><span>{val(submission.father_occupation)}</span></div>
+                      <div className="detail-field"><label>Mother Occupation</label><span>{val(submission.mother_occupation)}</span></div>
+                      <div className="detail-field"><label>Father Contact</label><span>{val(submission.father_contact)}</span></div>
+                      <div className="detail-field"><label>Mother Contact</label><span>{val(submission.mother_contact)}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">👫 Siblings & Family</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field"><label>Sibling 1 Name</label><span>{val(submission.sibling1_name)}</span></div>
+                      <div className="detail-field"><label>Sibling 1 Edu/Job</label><span>{val(submission.sibling1_edujob)}</span></div>
+                      <div className="detail-field"><label>Sibling 2 Name</label><span>{val(submission.sibling2_name)}</span></div>
+                      <div className="detail-field"><label>Sibling 2 Edu/Job</label><span>{val(submission.sibling2_edujob)}</span></div>
+                      <div className="detail-field"><label>Family Annual Income</label><span>{val(submission.family_annual_income)}</span></div>
+                    </div>
+                    <div style={{ marginTop: '16px' }}>
+                      <div className="detail-field"><label>Address</label><span style={{ whiteSpace: 'pre-line' }}>{val(submission.address)}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">📚 Educational Qualifications</div>
+                  <div className="detail-section-body" style={{ padding: 0, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                        <tr>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Qualification</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>University</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Course</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>%</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Year</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Class</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Medium</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Backlogs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(submission.qualifications || []).length > 0 ? (
+                          (submission.qualifications || []).map((q, index) => (
+                            <tr key={index} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                              <td style={{ padding: '10px 12px' }}>{val(q.qualification)}</td>
+                              <td style={{ padding: '10px 12px' }}>{val(q.university)}</td>
+                              <td style={{ padding: '10px 12px' }}>{val(q.course)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>{val(q.percent)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>{val(q.year_of_passing)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>{val(q.class)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>{val(q.medium)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>{val(q.backlogs)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan="8" className="text-center" style={{ padding: '16px', color: 'var(--color-text-muted)' }}>No qualification data</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="detail-section-body" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <div className="detail-grid">
+                      <div className="detail-field"><label>English Test</label>{boolBadge(submission.english_test)}</div>
+                      <div className="detail-field"><label>Marks</label><span>{val(submission.english_test_marks)}</span></div>
+                      <div className="detail-field"><label>Remarks</label><span>{val(submission.english_test_remarks)}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">🌍 Country & University Preferences</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field">
+                        <label>Countries of Choice</label>
+                        <span>
+                          {[
+                            submission.country_uk ? 'UK' : null,
+                            submission.country_other || null
+                          ].filter(Boolean).join(', ') || <span className="empty">—</span>}
+                        </span>
+                      </div>
+                      <div className="detail-field"><label>University Preferred</label><span>{val(submission.university_preferred)}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">📣 Source of Information</div>
+                  <div className="detail-section-body">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {[
+                        submission.heard_friends ? 'Friends' : null,
+                        submission.heard_internet ? 'Internet' : null,
+                        submission.heard_tele_calling ? 'Tele Calling' : null,
+                        submission.heard_brand_reference ? 'Brand Reference' : null,
+                        submission.heard_mobile_sms ? 'Mobile SMS' : null,
+                        submission.heard_whatsapp ? 'WhatsApp' : null
+                      ].filter(Boolean).map((h, i) => (
+                        <span key={i} className="badge badge-blue">{h}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">👥 References</div>
+                  <div className="detail-section-body">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                      <div>
+                        <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '12px' }}>Reference 1</p>
+                        <div className="detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <div className="detail-field"><label>Name</label><span>{val(submission.ref1_name)}</span></div>
+                          <div className="detail-field"><label>Contact</label><span>{val(submission.ref1_contact)}</span></div>
+                          <div className="detail-field"><label>Attended</label><span>{val(submission.ref1_attended)}</span></div>
+                          <div className="detail-field"><label>Signature</label><span>{val(submission.ref1_signature)}</span></div>
+                        </div>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '12px' }}>Reference 2</p>
+                        <div className="detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <div className="detail-field"><label>Name</label><span>{val(submission.ref2_name)}</span></div>
+                          <div className="detail-field"><label>Contact</label><span>{val(submission.ref2_contact)}</span></div>
+                          <div className="detail-field"><label>Attended</label><span>{val(submission.ref2_attended)}</span></div>
+                          <div className="detail-field"><label>Signature</label><span>{val(submission.ref2_signature)}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSave} className="edit-mode-container">
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Student Information</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field">
+                        <label>First Name</label>
+                        <input className="react-input" name="first_name" value={formData.first_name || ''} onChange={handleInputChange} required />
+                      </div>
+                      <div className="detail-field">
+                        <label>Last Name</label>
+                        <input className="react-input" name="last_name" value={formData.last_name || ''} onChange={handleInputChange} required />
+                      </div>
+                      <div className="detail-field">
+                        <label>Gender</label>
+                        <select className="react-select" name="gender" value={formData.gender || ''} onChange={handleInputChange}>
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div className="detail-field">
+                        <label>Date of Birth</label>
+                        <input type="date" className="react-input" name="dob" value={formData.dob || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Email</label>
+                        <input type="email" className="react-input" name="email" value={formData.email || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Mobile</label>
+                        <input type="tel" className="react-input" name="mobile" value={formData.mobile || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
+                        <input type="checkbox" className="react-checkbox" id="has_passport" name="has_passport" checked={!!formData.has_passport} onChange={handleInputChange} />
+                        <label htmlFor="has_passport" style={{ cursor: 'pointer', marginBottom: 0 }}>Has Passport</label>
+                      </div>
+                      <div className="detail-field">
+                        <label>Passport Number</label>
+                        <input className="react-input" name="passport_number" value={formData.passport_number || ''} onChange={handleInputChange} disabled={!formData.has_passport} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Form Date</label>
+                        <input type="date" className="react-input" name="date" value={formData.date || ''} onChange={handleInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Parents Information</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field">
+                        <label>Father Name</label>
+                        <input className="react-input" name="father_name" value={formData.father_name || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Mother Name</label>
+                        <input className="react-input" name="mother_name" value={formData.mother_name || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Father Occupation</label>
+                        <input className="react-input" name="father_occupation" value={formData.father_occupation || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Mother Occupation</label>
+                        <input className="react-input" name="mother_occupation" value={formData.mother_occupation || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Father Contact</label>
+                        <input className="react-input" name="father_contact" value={formData.father_contact || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Mother Contact</label>
+                        <input className="react-input" name="mother_contact" value={formData.mother_contact || ''} onChange={handleInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Siblings & Family</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field">
+                        <label>Sibling 1 Name</label>
+                        <input className="react-input" name="sibling1_name" value={formData.sibling1_name || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Sibling 1 Edu/Job</label>
+                        <input className="react-input" name="sibling1_edujob" value={formData.sibling1_edujob || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Sibling 2 Name</label>
+                        <input className="react-input" name="sibling2_name" value={formData.sibling2_name || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Sibling 2 Edu/Job</label>
+                        <input className="react-input" name="sibling2_edujob" value={formData.sibling2_edujob || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Family Annual Income</label>
+                        <input className="react-input" name="family_annual_income" value={formData.family_annual_income || ''} onChange={handleInputChange} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '16px' }}>
+                      <div className="detail-field">
+                        <label>Address</label>
+                        <textarea className="react-input" name="address" rows="3" value={formData.address || ''} onChange={handleInputChange}></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Educational Qualifications</div>
+                  <div className="detail-section-body" style={{ padding: 0, overflowX: 'auto' }}>
+                    <table className="qual-edit-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                        <tr>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Qualification</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>University</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Course</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', width: '90px' }}>%</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', width: '100px' }}>Year</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Class</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Medium</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', width: '90px' }}>Backlogs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[0, 1, 2].map(index => {
+                          const q = (formData.qualifications || [])[index] || {};
+                          return (
+                            <tr key={index} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.qualification || ''} onChange={(e) => handleQualChange(index, 'qualification', e.target.value)} placeholder="e.g. 10th / SSC" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.university || ''} onChange={(e) => handleQualChange(index, 'university', e.target.value)} placeholder="e.g. State Board" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.course || ''} onChange={(e) => handleQualChange(index, 'course', e.target.value)} placeholder="e.g. Science" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.percent || ''} onChange={(e) => handleQualChange(index, 'percent', e.target.value)} placeholder="e.g. 85%" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.year_of_passing || ''} onChange={(e) => handleQualChange(index, 'year_of_passing', e.target.value)} placeholder="e.g. 2020" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.class || ''} onChange={(e) => handleQualChange(index, 'class', e.target.value)} placeholder="e.g. First" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.medium || ''} onChange={(e) => handleQualChange(index, 'medium', e.target.value)} placeholder="e.g. English" />
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input value={q.backlogs || ''} onChange={(e) => handleQualChange(index, 'backlogs', e.target.value)} placeholder="e.g. 0" />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="detail-section-body" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <div className="detail-grid">
+                      <div className="detail-field" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
+                        <input type="checkbox" className="react-checkbox" id="english_test" name="english_test" checked={!!formData.english_test} onChange={handleInputChange} />
+                        <label htmlFor="english_test" style={{ cursor: 'pointer', marginBottom: 0 }}>English Test Taken</label>
+                      </div>
+                      <div className="detail-field">
+                        <label>English Test Marks</label>
+                        <input className="react-input" name="english_test_marks" value={formData.english_test_marks || ''} onChange={handleInputChange} disabled={!formData.english_test} />
+                      </div>
+                      <div className="detail-field">
+                        <label>Remarks</label>
+                        <input className="react-input" name="english_test_remarks" value={formData.english_test_remarks || ''} onChange={handleInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Country & University Preferences</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid">
+                      <div className="detail-field" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
+                        <input type="checkbox" className="react-checkbox" id="country_uk" name="country_uk" checked={!!formData.country_uk} onChange={handleInputChange} />
+                        <label htmlFor="country_uk" style={{ cursor: 'pointer', marginBottom: 0 }}>UK</label>
+                      </div>
+                      <div className="detail-field">
+                        <label>Other Country</label>
+                        <input className="react-input" name="country_other" value={formData.country_other || ''} onChange={handleInputChange} />
+                      </div>
+                      <div className="detail-field">
+                        <label>University Preferred</label>
+                        <input className="react-input" name="university_preferred" value={formData.university_preferred || ''} onChange={handleInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit Source of Information</div>
+                  <div className="detail-section-body">
+                    <div className="detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_friends" name="heard_friends" checked={!!formData.heard_friends} onChange={handleInputChange} />
+                        <label htmlFor="heard_friends" style={{ cursor: 'pointer', marginBottom: 0 }}>Friends</label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_internet" name="heard_internet" checked={!!formData.heard_internet} onChange={handleInputChange} />
+                        <label htmlFor="heard_internet" style={{ cursor: 'pointer', marginBottom: 0 }}>Internet</label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_tele_calling" name="heard_tele_calling" checked={!!formData.heard_tele_calling} onChange={handleInputChange} />
+                        <label htmlFor="heard_tele_calling" style={{ cursor: 'pointer', marginBottom: 0 }}>Tele Calling</label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_brand_reference" name="heard_brand_reference" checked={!!formData.heard_brand_reference} onChange={handleInputChange} />
+                        <label htmlFor="heard_brand_reference" style={{ cursor: 'pointer', marginBottom: 0 }}>Brand Reference</label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_mobile_sms" name="heard_mobile_sms" checked={!!formData.heard_mobile_sms} onChange={handleInputChange} />
+                        <label htmlFor="heard_mobile_sms" style={{ cursor: 'pointer', marginBottom: 0 }}>Mobile SMS</label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" className="react-checkbox" id="heard_whatsapp" name="heard_whatsapp" checked={!!formData.heard_whatsapp} onChange={handleInputChange} />
+                        <label htmlFor="heard_whatsapp" style={{ cursor: 'pointer', marginBottom: 0 }}>WhatsApp</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <div className="detail-section-header">✏️ Edit References</div>
+                  <div className="detail-section-body">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                      <div>
+                        <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '12px' }}>Reference 1</p>
+                        <div className="detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <div className="detail-field">
+                            <label>Name</label>
+                            <input className="react-input" name="ref1_name" value={formData.ref1_name || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Contact</label>
+                            <input className="react-input" name="ref1_contact" value={formData.ref1_contact || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Attended</label>
+                            <input className="react-input" name="ref1_attended" value={formData.ref1_attended || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Signature</label>
+                            <input className="react-input" name="ref1_signature" value={formData.ref1_signature || ''} onChange={handleInputChange} />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '12px' }}>Reference 2</p>
+                        <div className="detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <div className="detail-field">
+                            <label>Name</label>
+                            <input className="react-input" name="ref2_name" value={formData.ref2_name || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Contact</label>
+                            <input className="react-input" name="ref2_contact" value={formData.ref2_contact || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Attended</label>
+                            <input className="react-input" name="ref2_attended" value={formData.ref2_attended || ''} onChange={handleInputChange} />
+                          </div>
+                          <div className="detail-field">
+                            <label>Signature</label>
+                            <input className="react-input" name="ref2_signature" value={formData.ref2_signature || ''} onChange={handleInputChange} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="edit-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => { setIsEditing(false); setFormData(submission); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">💾 Save Changes</button>
+                </div>
+              </form>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('react-root'));
+    root.render(<AdminDetailApp />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "admissions-world-app",
+  "version": "1.0.0",
+  "description": "Edmissions World – Study Abroad Walk-In Form Management System",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js"
+  },
+  "keywords": [
+    "study-abroad",
+    "admissions",
+    "forms"
+  ],
+  "author": "Edmissions World",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-sqlite3": "^0.9.13",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "json2csv": "^6.0.0-alpha.2",
+    "nodemailer": "^9.0.3",
+    "sequelize": "^6.35.1",
+    "sqlite3": "^5.1.6",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "allowScripts": {
+    "sqlite3@5.1.7": true
+  }
+}

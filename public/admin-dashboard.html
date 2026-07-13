@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard – Edmissions World</title>
+  <meta name="description" content="Admissions World admin dashboard – manage study abroad form submissions.">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function AdminDashboardPage() {
+      const [username, setUsername] = useState('');
+      const [totalCount, setTotalCount] = useState(null);
+      const [exporting, setExporting] = useState({ excel: false, csv: false });
+      const countRef = useRef(null);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await fetch('/api/auth/status');
+            const data = await res.json();
+            if (!data.loggedIn) { window.location.href = '/admin-login.html'; return; }
+            setUsername(data.username || '');
+          } catch {
+            window.location.href = '/admin-login.html';
+          }
+        })();
+      }, []);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await fetch('/api/admin/stats');
+            const data = await res.json();
+            if (data.success) animateCount(data.total);
+          } catch {
+            setTotalCount('—');
+          }
+        })();
+      }, []);
+
+      const animateCount = (to) => {
+        const duration = 800;
+        const start = performance.now();
+        const step = (now) => {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setTotalCount(Math.round(to * eased));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      };
+
+      const exportData = async (format) => {
+        setExporting(prev => ({ ...prev, [format]: true }));
+        try {
+          const res = await fetch(`/api/admin/export/${format}`);
+          if (!res.ok) { const d = await res.json(); alert(d.message || 'Export failed.'); return; }
+          const blob = await res.blob();
+          const ext = format === 'excel' ? 'xlsx' : 'csv';
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `submissions_${new Date().toISOString().split('T')[0]}.${ext}`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(link.href);
+        } catch {
+          alert('Export failed. Please try again.');
+        } finally {
+          setExporting(prev => ({ ...prev, [format]: false }));
+        }
+      };
+
+      const logout = async () => {
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { }
+        window.location.href = '/admin-login.html';
+      };
+
+      return (
+        <div>
+          <header className="admin-header">
+            <div className="admin-header-inner">
+              <div className="admin-header-brand" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
+                <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 16px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  <img src="/images/logo.png" alt="Edmissions World" style={{ height: '55px', width: 'auto', display: 'block' }} />
+                </div>
+                <div>
+                  <h1>Edmissions World</h1>
+                  <p>Study Abroad Management System – Admin Dashboard</p>
+                </div>
+              </div>
+              <div className="admin-header-nav">
+                {username && <span className="admin-username">👤 {username}</span>}
+                <button id="logoutBtn" className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }} onClick={logout}>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="dashboard-main">
+            <div className="dashboard-grid">
+              <div className="dash-card dash-card-stats">
+                <div className="dash-card-stat" ref={countRef}>
+                  {totalCount === null ? '—' : totalCount}
+                </div>
+                <div className="dash-card-sub">Total Forms Submitted</div>
+              </div>
+
+
+              <div className="dash-card">
+                <div className="dash-card-title">
+                  <span>📋</span> Submitted Forms
+                </div>
+                <div className="dash-card-description">
+                  View every student application submitted through the website.
+                </div>
+                <a href="/admin-records.html" className="btn btn-primary">View Forms</a>
+              </div>
+
+
+              <div className="dash-card">
+                <div className="dash-card-title">
+                  <span>📥</span> Download Records
+                </div>
+                <div className="dash-card-description">
+                  Download all submitted student forms in Excel or CSV format.
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => exportData('excel')} id="excelBtn" disabled={exporting.excel}>
+                    {exporting.excel ? 'Preparing...' : '📊 Excel'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => exportData('csv')} id="csvBtn" disabled={exporting.csv}>
+                    {exporting.csv ? 'Preparing...' : '📄 CSV'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-grid-bottom">
+              <div className="dash-card">
+                <div className="dash-card-title">
+                  <span>➕</span> New Student Form
+                </div>
+                <div className="dash-card-description">
+                  Open the student walk-in registration form.
+                </div>
+                <a href="/" target="_blank" className="btn btn-primary">Open Form</a>
+              </div>
+            </div>
+
+            <div className="admin-back">
+              <a href="/portal.html">← Back to Portal</a>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AdminDashboardPage />);
+  </script>
+</body>
+
+</html>

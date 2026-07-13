@@ -1,0 +1,352 @@
+/* ============================================================
+   global.css – Design tokens and shared styles
+   Edmissions World Study Abroad Management System
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+/* ── CSS Variables ────────────────────────────────────────── */
+:root {
+  --color-primary:       #c0392b;   /* Edmissions red */
+  --color-primary-dark:  #a93226;
+  --color-primary-light: #e74c3c;
+  --color-navy:          #162238;   /* Header navy - slightly darker/richer */
+  --color-navy-light:    #1e2f4c;
+  --color-accent:        #c0392b;   /* Integrated red accent instead of bright blue */
+  --color-accent-dark:   #a93226;
+  --color-bg:            #e9eff5;   /* Highly aesthetic soft slate-blue background */
+  --color-surface:       #ffffff;
+  --color-border:        #dbe1eb;   /* Refined matching border */
+  --color-text:          #2c2825;   /* Softer, warmer dark charcoal */
+  --color-text-muted:    #7a736d;   /* Warm muted gray */
+  --color-text-light:    #a39c95;
+  --color-success:       #27ae60;
+  --color-success-bg:    #eafaf1;
+  --color-error:         #c0392b;
+  --color-error-bg:      #fdf0ef;
+  --color-warning:       #f39c12;
+
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg:   0 10px 30px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.08);
+  --shadow-xl:   0 20px 50px rgba(0,0,0,0.15);
+
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+
+  --font-body:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading:'Outfit', 'Inter', sans-serif;
+
+  --transition:  all 0.2s ease;
+}
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  /* Prevent font size adjustment on orientation change (iOS) */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  background-image: 
+    radial-gradient(circle at 10% 15%, rgba(192, 57, 43, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(22, 34, 56, 0.06) 0%, transparent 40%),
+    linear-gradient(rgba(22, 34, 56, 0.015) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(22, 34, 56, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  min-height: -webkit-fill-available; /* iOS full-height fix */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent content being hidden behind iOS notch/home indicator */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Smooth momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Remove tap highlight flash on Android/iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+a { color: var(--color-accent); text-decoration: none; transition: var(--transition); }
+a:hover { color: var(--color-accent-dark); }
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+  /* iOS: prevent double-tap zoom on buttons */
+  touch-action: manipulation;
+  /* Minimum 44px touch target (Apple HIG) */
+  min-height: 44px;
+  /* Remove iOS button default styling */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-navy) 0%, var(--color-primary) 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(22, 34, 56, 0.2);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-navy-light) 0%, var(--color-primary-dark) 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(192, 57, 43, 0.3);
+  color: #fff;
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--color-navy);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(26,39,68,0.25);
+}
+.btn-secondary:hover {
+  background: var(--color-navy-light);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: var(--color-success);
+  color: #fff;
+}
+.btn-success:hover { background: #219a52; transform: translateY(-1px); color: #fff; }
+
+.btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+.btn-lg { padding: 14px 30px; font-size: 1rem; }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 28px;
+  transition: var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+
+/* ── Alerts ───────────────────────────────────────────────── */
+.alert {
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.alert-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid #a9dfbf;
+}
+.alert-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid #f5c6c2;
+}
+.alert-info {
+  background: #eaf4fd;
+  color: var(--color-accent);
+  border: 1px solid #aed6f1;
+}
+
+/* ── Form Controls (shared) ───────────────────────────────── */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+.form-label .required { color: var(--color-primary); margin-left: 2px; }
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 11px 16px;
+  font-family: var(--font-body);
+  /* iOS auto-zoom prevention: must be >= 16px */
+  font-size: 16px;
+  color: var(--color-text);
+  background: #ffffff;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  transition: var(--transition);
+  outline: none;
+  /* Remove iOS default input styling */
+  -webkit-appearance: none;
+  appearance: none;
+  /* Prevent double-tap zoom */
+  touch-action: manipulation;
+  min-height: 44px;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--color-navy);
+  box-shadow: 0 0 0 4px rgba(22, 34, 56, 0.08);
+}
+.form-input.error,
+.form-select.error { border-color: var(--color-primary); }
+
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* ── Table ────────────────────────────────────────────────── */
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+thead { background: var(--color-navy); color: #fff; }
+thead th {
+  padding: 14px 16px;
+  font-weight: 600;
+  font-family: var(--font-heading);
+  text-align: left;
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s ease;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #f6f8fd; }
+tbody td { padding: 12px 16px; vertical-align: middle; }
+
+/* ── Badges ───────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-blue { background: #eaf4fd; color: var(--color-accent); }
+.badge-green { background: var(--color-success-bg); color: var(--color-success); }
+.badge-red { background: var(--color-error-bg); color: var(--color-error); }
+.badge-gray { background: #f0f2f8; color: var(--color-text-muted); }
+
+/* ── Utility ──────────────────────────────────────────────── */
+.text-center { text-align: center; }
+.text-muted { color: var(--color-text-muted); }
+.text-small { font-size: 0.82rem; }
+.d-flex { display: flex; }
+.align-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.w-full { width: 100%; }
+
+/* ── Spinner ──────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}
+@media (max-width: 480px) {
+  .btn { padding: 9px 16px; font-size: 0.9rem; }
+  .card { padding: 18px; }
+}
+
+/* ── iOS / Android Safe Area & Mobile Fixes ───────────────── */
+/* Safe area padding for notched iPhones (iPhone X and newer) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .form-footer,
+  .admin-header {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}
+
+/* iOS: prevent scroll bounce showing white background */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Touch targets: ensure interactive elements are easy to tap */
+a, button, [role="button"], label[for],
+.radio-option, .checkbox-option {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  touch-action: manipulation;
+}
+
+/* Fix for iOS sticky hover states */
+@media (hover: none) {
+  .btn:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--color-navy) 0%, var(--color-primary) 100%);
+    box-shadow: 0 4px 12px rgba(22, 34, 56, 0.2);
+  }
+}
+
+/* Portrait/landscape orientation consistency */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .form-header { position: relative; }
+  .success-box { padding: 24px 20px; max-height: 90vh; overflow-y: auto; }
+}

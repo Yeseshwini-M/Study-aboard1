@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login – Edmissions World</title>
+  <meta name="description" content="Admin login for Admissions World Study Abroad Management System.">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function AdminLoginPage() {
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
+      const [showPassword, setShowPassword] = useState(false);
+      const [loading, setLoading] = useState(false);
+      const [alert, setAlert] = useState(null);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await fetch('/api/auth/status');
+            const data = await res.json();
+            if (data.loggedIn) window.location.href = '/admin-dashboard.html';
+          } catch {}
+        })();
+      }, []);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setAlert(null);
+
+        if (!username.trim() || !password) {
+          setAlert({ type: 'error', message: '⚠️ Please enter both username and password.' });
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username.trim(), password }),
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            window.location.href = '/admin-dashboard.html';
+          } else {
+            setAlert({ type: 'error', message: `❌ ${data.message}` });
+          }
+        } catch {
+          setAlert({ type: 'error', message: '❌ Network error. Please try again.' });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="login-page">
+          <div className="login-card">
+            <div className="login-logo">
+              <div style={{ margin: '0 auto 16px', width: 'fit-content' }}>
+                <img src="/images/logo.png" alt="Edmissions World" style={{ height: '90px', width: 'auto' }} />
+              </div>
+              <p>Admin Portal</p>
+            </div>
+
+            {alert && (
+              <div className={`alert alert-${alert.type}`}>{alert.message}</div>
+            )}
+
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-group">
+                <label className="form-label" htmlFor="username">Username</label>
+                <input
+                  className="form-input"
+                  type="text"
+                  id="username"
+                  name="username"
+                  placeholder="Enter username"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" htmlFor="password">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-input"
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    placeholder="Enter password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    style={{ paddingRight: '44px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(p => !p)}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--color-text-muted)' }}
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? '🙈' : '👁'}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" id="loginBtn" className="btn btn-primary w-full" style={{ justifyContent: 'center' }} disabled={loading}>
+                {loading ? (
+                  <><span>Signing in...</span> <span className="spinner" style={{ display: 'inline-block' }}></span></>
+                ) : (
+                  <span>Sign In</span>
+                )}
+              </button>
+            </form>
+
+            <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+              <a href="/" style={{ color: 'var(--color-text-muted)' }}>← Back to Home</a>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AdminLoginPage />);
+  </script>
+</body>
+</html>

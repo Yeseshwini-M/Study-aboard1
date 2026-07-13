@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Abroad Walk-In Form – Edmissions World</title>
+  <meta name="description" content="Submit your study abroad walk-in form at Edmissions World.">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/form.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body className="form-page">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const initialQuals = [
+      { qualification: '', university: '', course: '', percent: '', year_of_passing: '', class: '', medium: '', backlogs: '' },
+      { qualification: '', university: '', course: '', percent: '', year_of_passing: '', class: '', medium: '', backlogs: '' },
+      { qualification: '', university: '', course: '', percent: '', year_of_passing: '', class: '', medium: '', backlogs: '' },
+    ];
+
+    const initialForm = {
+      date: today,
+      first_name: '', last_name: '', gender: '', dob: '', email: '', mobile: '',
+      has_passport: '', passport_number: '',
+      father_name: '', mother_name: '', father_occupation: '', mother_occupation: '',
+      father_contact: '', mother_contact: '',
+      sibling1_name: '', sibling1_edujob: '', sibling2_name: '', sibling2_edujob: '',
+      family_annual_income: '', address: '',
+      qualifications: initialQuals,
+      english_test: '', english_test_marks: '', english_test_remarks: '',
+      country_uk: false, country_other: '', university_preferred: '',
+      heard_friends: false, heard_internet: false, heard_tele_calling: false,
+      heard_brand_reference: false, heard_mobile_sms: false, heard_whatsapp: false,
+      ref1_name: '', ref1_contact: '', ref1_attended: '', ref1_signature: '',
+      ref2_name: '', ref2_contact: '', ref2_attended: '', ref2_signature: '',
+    };
+
+    function WalkInForm() {
+      const [form, setForm] = useState(initialForm);
+      const [errors, setErrors] = useState({});
+      const [alert, setAlert] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [success, setSuccess] = useState(null);
+
+      const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+      const setQual = (row, field, val) => {
+        setForm(prev => {
+          const quals = prev.qualifications.map((q, i) => i === row ? { ...q, [field]: val } : q);
+          return { ...prev, qualifications: quals };
+        });
+      };
+
+      const validate = () => {
+        const errs = {};
+        if (!form.first_name.trim()) errs.first_name = 'First name is required';
+        if (!form.last_name.trim()) errs.last_name = 'Last name is required';
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Enter a valid email address';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setAlert(null);
+        if (!validate()) {
+          setAlert({ type: 'error', message: '⚠️ Please fix the highlighted fields.' });
+          return;
+        }
+        setLoading(true);
+        try {
+          const payload = {
+            ...form,
+            has_passport: form.has_passport === 'true',
+            english_test: form.english_test === 'true',
+          };
+          const res = await fetch('/api/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const result = await res.json();
+          if (result.success) {
+            setSuccess(result.id);
+          } else {
+            setAlert({ type: 'error', message: `❌ ${result.message}` });
+          }
+        } catch {
+          setAlert({ type: 'error', message: '❌ Network error. Please check your connection and try again.' });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleReset = () => {
+        if (confirm('Are you sure you want to reset the form? All entered data will be lost.')) {
+          setForm(initialForm);
+          setErrors({});
+          setAlert(null);
+        }
+      };
+
+      const handleSubmitAnother = () => {
+        setSuccess(null);
+        setForm(initialForm);
+        setErrors({});
+        setAlert(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="form-page">
+          {success && (
+            <div className="success-overlay show">
+              <div className="success-box">
+                <div className="success-icon">✅</div>
+                <h2>Application Submitted!</h2>
+                <p>Your study abroad walk-in form has been successfully submitted. Our team will reach out to you soon.</p>
+                <div className="success-ref">Reference ID: #{String(success).padStart(4, '0')}</div>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => window.location.href = '/'}>Back to Home</button>
+                  <button className="btn btn-outline" onClick={handleSubmitAnother}>Submit Another</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="form-header">
+            <div className="form-header-logo" style={{ background: '#ffffff', padding: '18px 32px' }}>
+              <img src="/images/logo.png" alt="Edmissions World" style={{ height: '120px', width: 'auto', display: 'block' }} />
+            </div>
+            <div className="form-header-title">
+              <h1>Study Abroad<br />Walk-In Form</h1>
+            </div>
+          </div>
+
+          <div className="form-container">
+            {alert && <div className={`alert alert-${alert.type}`}>{alert.message}</div>}
+
+            <div className="form-card">
+              <form onSubmit={handleSubmit} noValidate>
+                <div className="form-card-inner">
+
+                  <div className="form-section">
+                    <div className="form-section-title">🎓 Student Full Name As Per Passport</div>
+
+                    <div className="form-row" style={{ gridTemplateColumns: '1fr 1fr auto', alignItems: 'end', gap: '16px' }}>
+                      <div className={`form-field${errors.first_name ? ' has-error' : ''}`} id="field-first_name">
+                        <label htmlFor="first_name">First Name <span style={{ color: 'var(--color-primary)' }}>*</span></label>
+                        <input type="text" id="first_name" name="first_name" placeholder="Enter first name" autoComplete="given-name"
+                          value={form.first_name} onChange={e => { set('first_name', e.target.value); if (errors.first_name) setErrors(p => ({ ...p, first_name: '' })); }} />
+                        {errors.first_name && <span className="field-error-msg">{errors.first_name}</span>}
+                      </div>
+                      <div className={`form-field${errors.last_name ? ' has-error' : ''}`} id="field-last_name">
+                        <label htmlFor="last_name">Last Name <span style={{ color: 'var(--color-primary)' }}>*</span></label>
+                        <input type="text" id="last_name" name="last_name" placeholder="Enter last name" autoComplete="family-name"
+                          value={form.last_name} onChange={e => { set('last_name', e.target.value); if (errors.last_name) setErrors(p => ({ ...p, last_name: '' })); }} />
+                        {errors.last_name && <span className="field-error-msg">{errors.last_name}</span>}
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="date">Date</label>
+                        <input type="date" id="date" name="date" style={{ minWidth: '150px' }} value={form.date} onChange={e => set('date', e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="form-row form-row-2">
+                      <div className="form-field">
+                        <label>Gender</label>
+                        <div className="radio-group" style={{ paddingTop: '6px' }}>
+                          {['Male', 'Female', 'Other'].map(g => (
+                            <label key={g} className="radio-option">
+                              <input type="radio" name="gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)} /> {g}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="dob">Date of Birth</label>
+                        <input type="date" id="dob" name="dob" autoComplete="bday" value={form.dob} onChange={e => set('dob', e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="form-row form-row-2">
+                      <div className={`form-field${errors.email ? ' has-error' : ''}`} id="field-email">
+                        <label htmlFor="email">E-Mail ID</label>
+                        <input type="email" id="email" name="email" placeholder="example@email.com" autoComplete="email"
+                          value={form.email} onChange={e => { set('email', e.target.value); if (errors.email) setErrors(p => ({ ...p, email: '' })); }} />
+                        {errors.email && <span className="field-error-msg">{errors.email}</span>}
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="mobile">Mobile No</label>
+                        <input type="tel" id="mobile" name="mobile" placeholder="+91 00000 00000" autoComplete="tel" value={form.mobile} onChange={e => set('mobile', e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="form-row form-row-2">
+                      <div className="form-field">
+                        <label>Passport</label>
+                        <div className="radio-group" style={{ paddingTop: '6px' }}>
+                          <label className="radio-option"><input type="radio" name="has_passport" value="true" checked={form.has_passport === 'true'} onChange={() => set('has_passport', 'true')} /> Yes</label>
+                          <label className="radio-option"><input type="radio" name="has_passport" value="false" checked={form.has_passport === 'false'} onChange={() => set('has_passport', 'false')} /> No</label>
+                        </div>
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="passport_number">Passport Number</label>
+                        <input type="text" id="passport_number" name="passport_number" placeholder="Passport No." value={form.passport_number} onChange={e => set('passport_number', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">👨‍👩‍👦 Parents Information</div>
+                    <div className="form-row form-row-2">
+                      <div className="form-field"><label htmlFor="father_name">Father Name</label><input type="text" id="father_name" placeholder="Father's full name" value={form.father_name} onChange={e => set('father_name', e.target.value)} /></div>
+                      <div className="form-field"><label htmlFor="mother_name">Mother Name</label><input type="text" id="mother_name" placeholder="Mother's full name" value={form.mother_name} onChange={e => set('mother_name', e.target.value)} /></div>
+                    </div>
+                    <div className="form-row form-row-2">
+                      <div className="form-field"><label htmlFor="father_occupation">Father Occupation</label><input type="text" id="father_occupation" placeholder="e.g. Business, Service" value={form.father_occupation} onChange={e => set('father_occupation', e.target.value)} /></div>
+                      <div className="form-field"><label htmlFor="mother_occupation">Mother Occupation</label><input type="text" id="mother_occupation" placeholder="e.g. Homemaker, Teacher" value={form.mother_occupation} onChange={e => set('mother_occupation', e.target.value)} /></div>
+                    </div>
+                    <div className="form-row form-row-2">
+                      <div className="form-field"><label htmlFor="father_contact">Father Contact No</label><input type="tel" id="father_contact" placeholder="Father's phone number" value={form.father_contact} onChange={e => set('father_contact', e.target.value)} /></div>
+                      <div className="form-field"><label htmlFor="mother_contact">Mother Contact No</label><input type="tel" id="mother_contact" placeholder="Mother's phone number" value={form.mother_contact} onChange={e => set('mother_contact', e.target.value)} /></div>
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">👫 Siblings</div>
+                    <div className="form-row form-row-2">
+                      <div>
+                        <div className="form-field" style={{ marginBottom: '10px' }}><label htmlFor="sibling1_name">Full Name</label><input type="text" id="sibling1_name" placeholder="Sibling 1 full name" value={form.sibling1_name} onChange={e => set('sibling1_name', e.target.value)} /></div>
+                        <div className="form-field"><label htmlFor="sibling1_edujob">Edu / Job</label><input type="text" id="sibling1_edujob" placeholder="Education or occupation" value={form.sibling1_edujob} onChange={e => set('sibling1_edujob', e.target.value)} /></div>
+                      </div>
+                      <div>
+                        <div className="form-field" style={{ marginBottom: '10px' }}><label htmlFor="sibling2_name">Full Name</label><input type="text" id="sibling2_name" placeholder="Sibling 2 full name" value={form.sibling2_name} onChange={e => set('sibling2_name', e.target.value)} /></div>
+                        <div className="form-field"><label htmlFor="sibling2_edujob">Edu / Job</label><input type="text" id="sibling2_edujob" placeholder="Education or occupation" value={form.sibling2_edujob} onChange={e => set('sibling2_edujob', e.target.value)} /></div>
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-field"><label htmlFor="family_annual_income">Family Annual Income</label><input type="text" id="family_annual_income" placeholder="e.g. ₹5,00,000" value={form.family_annual_income} onChange={e => set('family_annual_income', e.target.value)} /></div>
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="address">Address</label>
+                      <textarea id="address" name="address" rows="3" placeholder="Full residential address..." value={form.address} onChange={e => set('address', e.target.value)}></textarea>
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">🎓 Educational Qualifications</div>
+                    <div className="qual-table-wrapper">
+                      <table className="qual-table">
+                        <thead>
+                          <tr>
+                            <th>Qualification</th><th>University / Board</th><th>Course</th>
+                            <th>%</th><th>Year of Passing</th><th>Class</th><th>Medium</th><th>Backlogs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {form.qualifications.map((q, i) => (
+                            <tr key={i}>
+                              {[
+                                ['qualification', 'e.g. B.Sc'], ['university', 'University/Board'],
+                                ['course', 'Course'], ['percent', '%'], ['year_of_passing', 'Year'],
+                                ['class', 'Class'], ['medium', 'Medium'], ['backlogs', '0']
+                              ].map(([field, ph]) => (
+                                <td key={field}>
+                                  <input type="text" name={`qual_${i}_${field}`} placeholder={ph}
+                                    value={q[field]} onChange={e => setQual(i, field, e.target.value)} />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">📝 English Test</div>
+                    <div className="form-row" style={{ gridTemplateColumns: 'auto auto 1fr 1fr', alignItems: 'end', gap: '16px', flexWrap: 'wrap' }}>
+                      <div className="form-field">
+                        <label>English Test</label>
+                        <div className="radio-group" style={{ paddingTop: '6px' }}>
+                          <label className="radio-option"><input type="radio" name="english_test" value="true" checked={form.english_test === 'true'} onChange={() => set('english_test', 'true')} /> Yes</label>
+                          <label className="radio-option"><input type="radio" name="english_test" value="false" checked={form.english_test === 'false'} onChange={() => set('english_test', 'false')} /> No</label>
+                        </div>
+                      </div>
+                      <div className="form-field" style={{ minWidth: '120px' }}>
+                        <label htmlFor="english_test_marks">Marks</label>
+                        <input type="text" id="english_test_marks" placeholder="e.g. 6.5" value={form.english_test_marks} onChange={e => set('english_test_marks', e.target.value)} />
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="english_test_remarks">Remarks</label>
+                        <input type="text" id="english_test_remarks" placeholder="Any remarks" value={form.english_test_remarks} onChange={e => set('english_test_remarks', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">🌍 Country Of Your Choice</div>
+                    <div className="form-row" style={{ gridTemplateColumns: 'auto 1fr', alignItems: 'end', gap: '20px', marginBottom: '14px' }}>
+                      <div className="form-field">
+                        <label>&nbsp;</label>
+                        <label className="checkbox-option" style={{ paddingTop: '8px' }}>
+                          <input type="checkbox" id="country_uk" name="country_uk" checked={form.country_uk} onChange={e => set('country_uk', e.target.checked)} /> UK
+                        </label>
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="country_other">Other Country, If Any</label>
+                        <input type="text" id="country_other" placeholder="e.g. Canada, Australia, USA" value={form.country_other} onChange={e => set('country_other', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="university_preferred">University Preferred</label>
+                      <input type="text" id="university_preferred" placeholder="Preferred university name" value={form.university_preferred} onChange={e => set('university_preferred', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">📣 How Do You Know About Edmissions World?</div>
+                    <div className="heard-grid">
+                      {[
+                        ['heard_friends', 'Friends'], ['heard_internet', 'Internet'],
+                        ['heard_tele_calling', 'Tele Calling'], ['heard_brand_reference', 'Brand Reference'],
+                        ['heard_mobile_sms', 'Mobile SMS'], ['heard_whatsapp', 'WhatsApp']
+                      ].map(([key, label]) => (
+                        <label key={key} className="checkbox-option">
+                          <input type="checkbox" id={key} name={key} checked={form[key]} onChange={e => set(key, e.target.checked)} /> {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-section">
+                    <div className="form-section-title">👥 Any Two References</div>
+                    <div className="ref-grid">
+                      {[1, 2].map(n => (
+                        <div key={n} className="ref-block">
+                          <h4>Reference {n}</h4>
+                          {[['name', 'Full Name', 'text', `Reference ${n} name`], ['contact', 'Contact No', 'tel', 'Contact number'], ['attended', 'Attended', 'text', 'Date/occasion'], ['signature', 'Signature', 'text', 'Signature / initials']].map(([field, label, type, ph]) => (
+                            <div key={field} className="form-field" style={{ marginBottom: '10px' }}>
+                              <label htmlFor={`ref${n}_${field}`}>{label}</label>
+                              <input type={type} id={`ref${n}_${field}`} name={`ref${n}_${field}`} placeholder={ph}
+                                value={form[`ref${n}_${field}`]} onChange={e => set(`ref${n}_${field}`, e.target.value)} />
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="form-footer">
+                  <p className="form-footer-note">
+                    Fields marked <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>*</span> are required. Your data is stored securely.
+                  </p>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-outline" onClick={handleReset}>Reset Form</button>
+                    <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                      {loading ? (
+                        <><span>Submitting...</span> <span className="spinner" style={{ display: 'inline-block' }}></span></>
+                      ) : (
+                        <span>Submit Application</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="text-center mt-16">
+              <a href="/" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>← Back to Home</a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<WalkInForm />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submitted Forms – Edmissions World</title>
+  <meta name="description" content="View and search all submitted study abroad forms.">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function AdminRecordsPage() {
+      const [records, setRecords] = useState([]);
+      const [state, setState] = useState({
+        page: 1, limit: 10, search: '', sortBy: 'created_at', sortOrder: 'DESC', total: 0, pages: 0
+      });
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const searchTimer = useRef(null);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await fetch('/api/auth/status');
+            const data = await res.json();
+            if (!data.loggedIn) window.location.href = '/admin-login.html';
+          } catch { window.location.href = '/admin-login.html'; }
+        })();
+      }, []);
+
+      const loadRecords = useCallback(async (overrideState) => {
+        const s = overrideState || state;
+        setLoading(true);
+        setError(null);
+        try {
+          const params = new URLSearchParams({
+            page: s.page, limit: s.limit, search: s.search, sortBy: s.sortBy, sortOrder: s.sortOrder
+          });
+          const res = await fetch(`/api/admin/submissions?${params}`);
+          if (res.status === 401) { window.location.href = '/admin-login.html'; return; }
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message);
+          setRecords(data.data);
+          setState(prev => ({ ...prev, total: data.total, pages: data.pages }));
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [state.page, state.limit, state.search, state.sortBy, state.sortOrder]);
+
+      useEffect(() => { loadRecords(); }, [state.page, state.sortBy, state.sortOrder]);
+
+      const handleSearch = (val) => {
+        clearTimeout(searchTimer.current);
+        searchTimer.current = setTimeout(() => {
+          setState(prev => {
+            const next = { ...prev, search: val, page: 1 };
+            loadRecords(next);
+            return next;
+          });
+        }, 350);
+      };
+
+      const handleSort = (col) => {
+        setState(prev => {
+          const next = {
+            ...prev,
+            sortBy: col,
+            sortOrder: prev.sortBy === col ? (prev.sortOrder === 'ASC' ? 'DESC' : 'ASC') : 'DESC',
+            page: 1
+          };
+          return next;
+        });
+      };
+
+      const goToPage = (page) => {
+        if (page < 1 || page > state.pages) return;
+        setState(prev => ({ ...prev, page }));
+      };
+
+      const exportData = async (format) => {
+        try {
+          const res = await fetch(`/api/admin/export/${format}`);
+          if (!res.ok) { const d = await res.json(); alert(d.message || 'Export failed'); return; }
+          const blob = await res.blob();
+          const ext = format === 'excel' ? 'xlsx' : 'csv';
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `submissions_${new Date().toISOString().split('T')[0]}.${ext}`;
+          document.body.appendChild(link); link.click(); link.remove();
+        } catch { alert('Export failed.'); }
+      };
+
+      const logout = async () => {
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+        window.location.href = '/admin-login.html';
+      };
+
+      const SortIcon = ({ col }) => {
+        if (state.sortBy !== col) return <span className="sort-icon" style={{ opacity: 0.4 }}>↕</span>;
+        return <span className="sort-icon" style={{ opacity: 1 }}>{state.sortOrder === 'ASC' ? '↑' : '↓'}</span>;
+      };
+
+      const from = state.total === 0 ? 0 : (state.page - 1) * state.limit + 1;
+      const to = Math.min(state.page * state.limit, state.total);
+
+      const renderPagination = () => {
+        const maxBtns = 5;
+        let startPage = Math.max(1, state.page - Math.floor(maxBtns / 2));
+        let endPage = Math.min(state.pages, startPage + maxBtns - 1);
+        if (endPage - startPage < maxBtns - 1) startPage = Math.max(1, endPage - maxBtns + 1);
+        const btns = [];
+        btns.push(<button key="prev" className="page-btn" onClick={() => goToPage(state.page - 1)} disabled={state.page <= 1}>‹</button>);
+        if (startPage > 1) {
+          btns.push(<button key="1" className="page-btn" onClick={() => goToPage(1)}>1</button>);
+          btns.push(<span key="e1" style={{ padding: '0 6px', color: 'var(--color-text-muted)' }}>...</span>);
+        }
+        for (let i = startPage; i <= endPage; i++) {
+          btns.push(<button key={i} className={`page-btn ${i === state.page ? 'active' : ''}`} onClick={() => goToPage(i)}>{i}</button>);
+        }
+        if (endPage < state.pages) {
+          btns.push(<span key="e2" style={{ padding: '0 6px', color: 'var(--color-text-muted)' }}>...</span>);
+          btns.push(<button key="last" className="page-btn" onClick={() => goToPage(state.pages)}>{state.pages}</button>);
+        }
+        btns.push(<button key="next" className="page-btn" onClick={() => goToPage(state.page + 1)} disabled={state.page >= state.pages}>›</button>);
+        return btns;
+      };
+
+      return (
+        <div>
+          <header className="admin-header">
+            <div className="admin-header-inner">
+              <div className="admin-header-brand" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
+                <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 16px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  <img src="/images/logo.png" alt="Edmissions World" style={{ height: '55px', width: 'auto', display: 'block' }} />
+                </div>
+                <div>
+                  <h1>Edmissions World</h1>
+                  <p>Study Abroad Management System</p>
+                </div>
+              </div>
+              <div className="admin-header-nav">
+                <a href="/admin-dashboard.html" className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }}>
+                  ← Dashboard
+                </a>
+                <button id="logoutBtn" className="btn btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }} onClick={logout}>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="records-main">
+            <div className="records-header">
+              <h2>📋 Submitted Forms{' '}
+                <span id="recordsTotal" style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                  {!loading && `(${state.total} record${state.total !== 1 ? 's' : ''})`}
+                </span>
+              </h2>
+              <div className="records-controls">
+                <div className="search-box">
+                  <span className="search-box-icon">🔍</span>
+                  <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search name, email, mobile..."
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                </div>
+                <button className="btn btn-success btn-sm" onClick={() => exportData('excel')}>📊 Excel</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => exportData('csv')}>📄 CSV</button>
+              </div>
+            </div>
+
+            {error && <div className="alert alert-error">❌ Failed to load records: {error}</div>}
+
+            <div className="table-wrapper">
+              <table id="recordsTable">
+                <thead>
+                  <tr>
+                    <th className="sortable" onClick={() => handleSort('id')}># <SortIcon col="id" /></th>
+                    <th className="sortable" onClick={() => handleSort('first_name')}>Name <SortIcon col="first_name" /></th>
+                    <th className="sortable hide-mobile" onClick={() => handleSort('gender')}>Gender <SortIcon col="gender" /></th>
+                    <th className="sortable hide-mobile" onClick={() => handleSort('email')}>Email <SortIcon col="email" /></th>
+                    <th className="hide-mobile">Mobile</th>
+                    <th className="hide-mobile">Country</th>
+                    <th className="sortable" onClick={() => handleSort('created_at')}>Submitted <SortIcon col="created_at" /></th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsBody">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="8" className="text-center" style={{ padding: '40px', color: 'var(--color-text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                          <div className="spinner" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: 'var(--color-accent)', width: '18px', height: '18px' }}></div>
+                          Loading...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : records.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center" style={{ padding: '48px', color: 'var(--color-text-muted)' }}>
+                        📭 No submissions found{state.search ? ` for "${state.search}"` : ''}.
+                      </td>
+                    </tr>
+                  ) : (
+                    records.map(s => {
+                      const name = `${s.first_name} ${s.last_name}`;
+                      const countries = [s.country_uk ? 'UK' : null, s.country_other || null].filter(Boolean).join(', ') || '—';
+                      const submitted = new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                      return (
+                        <tr key={s.id}>
+                          <td><span className="badge badge-gray">#{s.id}</span></td>
+                          <td><strong>{name}</strong></td>
+                          <td className="hide-mobile">
+                            {s.gender
+                              ? <span className={`badge ${s.gender === 'Male' ? 'badge-blue' : 'badge-red'}`}>{s.gender}</span>
+                              : <span className="text-muted">—</span>
+                            }
+                          </td>
+                          <td className="hide-mobile">{s.email || <span className="text-muted">—</span>}</td>
+                          <td className="hide-mobile">{s.mobile || <span className="text-muted">—</span>}</td>
+                          <td className="hide-mobile">{countries}</td>
+                          <td><span className="text-small">{submitted}</span></td>
+                          <td>
+                            <a href={`/admin-detail.html?id=${s.id}`} className="btn btn-primary btn-sm">View</a>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pagination">
+              <span className="pagination-info" id="paginationInfo">
+                {state.total === 0 ? 'No results' : `Showing ${from}–${to} of ${state.total}`}
+              </span>
+              <div className="pagination-controls" id="paginationControls">
+                {!loading && state.pages > 1 && renderPagination()}
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AdminRecordsPage />);
+  </script>
+</body>
+</html>
